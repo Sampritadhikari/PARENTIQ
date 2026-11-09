@@ -1,0 +1,57 @@
+# Environments & Dependencies
+venv/
+env/
+ENV/
+.pub-cache/
+.localappdata/
+
+# Python & Databases
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+*.db
+*.sqlite
+*.sqlite3
+backend/parentiq.db
+
+# Secrets & Environment Variables
+.env
+backend/.env
+*firebase-service-account*.json
+*google-services*.json
+*GoogleService-Info*.plist
+
+# Flutter & Dart
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+parent_app/build/
+parent_app/.dart_tool/
+
+# Android & Gradle
+.gradle/
+build/
+child_app/.gradle/
+child_app/build/
+child_app/app/build/
+child_app/local.properties
+parent_app/android/local.properties
+*.apk
+*.aab
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# OS Files
+.DS_Store
+Thumbs.db
+Desktop.ini

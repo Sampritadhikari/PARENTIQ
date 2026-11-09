@@ -1,0 +1,14 @@
+<resources>
+    <color name="primaryNavy">#0B192C</color>
+    <color name="secondaryRoyal">#1E3E62</color>
+    <color name="accentCyan">#00ADB5</color>
+    <color name="background">#F8F9FA</color>
+    <color name="surfaceWhite">#FFFFFF</color>
+    <color name="cardBorder">#E2E8F0</color>
+    <color name="textPrimary">#1E293B</color>
+    <color name="textSecondary">#64748B</color>
+    <color name="danger">#EF4444</color>
+    <color name="success">#10B981</color>
+    <color name="warning">#F59E0B</color>
+</resources>
+

@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PARENTIQ — Parent Safety & Control Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            800: '#1E3E62',
+                            900: '#0B192C',
+                        },
+                        cyan: {
+                            500: '#00ADB5',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet Maps CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        .active-tab {
+            background-color: #1E3E62;
+            color: #ffffff;
+        }
+        #map { height: 420px; border-radius: 12px; }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans text-slate-800">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-navy-900 text-white shadow-md z-30 sticky top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-cyan-500 flex items-center justify-center font-black text-xl text-navy-900 shadow-md">
+                    PQ
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">PARENTIQ</h1>
+                    <p class="text-xs text-slate-300">Guardian Safety Platform</p>
+                </div>
+            </div>
+
+            <!-- Child Selector -->
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 bg-navy-800 px-3 py-1.5 rounded-lg border border-slate-700">
+                    <i data-lucide="user" class="w-4 h-4 text-cyan-500"></i>
+                    <select id="childSelector" class="bg-transparent text-sm font-medium text-white focus:outline-none cursor-pointer">
+                        <option value="liam" class="text-slate-900">Liam Connor (12 yr)</option>
+                        <option value="emma" class="text-slate-900">Emma Connor (8 yr)</option>
+                    </select>
+                </div>
+
+                <!-- Emergency Lock Quick Button -->
+                <button id="btnInstantLock" onclick="toggleInstantLock()" class="px-3.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow">
+                    <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                    <span id="lockBtnText">Instant Lock</span>
+                </button>
+
+                <!-- Status Pill -->
+                <div class="hidden sm:flex items-center space-x-2 bg-emerald-950/80 border border-emerald-500/40 px-3 py-1 rounded-full">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="text-xs font-semibold text-emerald-300">Device Online</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container with Tabs -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1">
+        <!-- Navigation Tabs -->
+        <nav class="flex space-x-2 border-b border-slate-200 pb-3 mb-6 overflow-x-auto text-sm font-medium">
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="px-4 py-2 rounded-lg active-tab flex items-center space-x-2 transition">
+                <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                <span>Dashboard</span>
+            </button>
+            <button onclick="switchTab('location')" id="tab-location" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center space-x-2 transition">
+                <i data-lucide="map-pin" class="w-4 h-4"></i>
+                <span>Live Location & Geofence</span>
+            </button>
+            <button onclick="switchTab('screentime')" id="tab-screentime" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center space-x-2 transition">
+                <i data-lucide="clock" class="w-4 h-4"></i>
+                <span>Screen Time</span>
+            </button>
+            <button onclick="switchTab('apps')" id="tab-apps" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center space-x-2 transition">
+                <i data-lucide="grid" class="w-4 h-4"></i>
+                <span>App Management</span>
+            </button>
+            <button onclick="switchTab('safety')" id="tab-safety" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center space-x-2 transition">
+                <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                <span>Online Safety</span>
+            </button>
+            <button onclick="switchTab('monitoring')" id="tab-monitoring" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center space-x-2 transition">
+                <i data-lucide="cast" class="w-4 h-4"></i>
+                <span>Live Monitoring</span>
+            </button>
+            <button onclick="switchTab('pairing')" id="tab-pairing" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 flex items-center space-x-2 transition">
+                <i data-lucide="smartphone" class="w-4 h-4"></i>
+                <span>Pair New Device</span>
+            </button>
+        </nav>
+
+        <!-- 1. TAB: DASHBOARD -->
+        <section id="content-dashboard" class="tab-pane space-y-6">
+            <!-- Summary Stats Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between text-slate-500 mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider">Device Battery</span>
+                        <i data-lucide="battery-charging" class="w-5 h-5 text-emerald-500"></i>
+                    </div>
+                    <div class="text-2xl font-black text-slate-900" id="dashBattery">86%</div>
+                    <p class="text-xs text-slate-500 mt-1 flex items-center">
+                        <span class="text-emerald-600 font-semibold mr-1">● Wi-Fi Connected</span> • Samsung Galaxy S23
+                    </p>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between text-slate-500 mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider">Screen Time Today</span>
+                        <i data-lucide="hourglass" class="w-5 h-5 text-blue-500"></i>
+                    </div>
+                    <div class="text-2xl font-black text-slate-900" id="dashScreenTime">1h 30m <span class="text-sm font-normal text-slate-500">/ 2h 00m</span></div>
+                    <div class="w-full bg-slate-100 rounded-full h-2 mt-2">
+                        <div class="bg-blue-600 h-2 rounded-full" style="width: 75%"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between text-slate-500 mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider">Current Location</span>
+                        <i data-lucide="map-pin" class="w-5 h-5 text-red-500"></i>
+                    </div>
+                    <div class="text-base font-bold text-slate-900 truncate" id="dashLocation">Market St, San Francisco</div>
+                    <p class="text-xs text-slate-500 mt-1">In Safe Zone: <strong class="text-slate-700">Home</strong> (2m ago)</p>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between text-slate-500 mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider">Safety Status</span>
+                        <i data-lucide="shield-check" class="w-5 h-5 text-cyan-500"></i>
+                    </div>
+                    <div class="text-2xl font-black text-slate-900">Protected</div>
+                    <p class="text-xs text-amber-600 font-semibold mt-1">1 Inappropriate Site Blocked</p>
+                </div>
+            </div>
+
+            <!-- Charts & Activity Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- App Usage Chart -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-base font-bold text-slate-900">Top Applications Today</h2>
+                        <span class="text-xs text-slate-500 font-medium">Foreground Duration</span>
+                    </div>
+                    <div class="h-64">
+                        <canvas id="appUsageChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Recent Safety Alerts & Quick Actions -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900 mb-4">Recent Safety Alerts</h2>
+                        <div class="space-y-3">
+                            <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-start space-x-3">
+                                <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0"></i>
+                                <div class="text-xs">
+                                    <p class="font-bold text-amber-900">Adult Web Domain Blocked</p>
+                                    <p class="text-amber-700 mt-0.5">Blocked adult-content-sample.com in Chrome</p>
+                                    <p class="text-[10px] text-amber-500 mt-1">2 hours ago</p>
+                                </div>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start space-x-3">
+                                <i data-lucide="navigation" class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0"></i>
+                                <div class="text-xs">
+                                    <p class="font-bold text-slate-900">Geofence Safe Exit</p>
+                                    <p class="text-slate-600 mt-0.5">Departed Lincoln Middle School at 15:32</p>
+                                    <p class="text-[10px] text-slate-400 mt-1">4 hours ago</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100">
+                        <button onclick="switchTab('safety')" class="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">
+                            View All Safety Alerts &rarr;
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. TAB: LIVE LOCATION & GEOFENCING -->
+        <section id="content-location" class="tab-pane hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Real-Time GPS Tracking & Safe Zones</h2>
+                        <p class="text-xs text-slate-500">Live coordinates updated every 60 seconds with breadcrumb path</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="centerMapOnChild()" class="px-3 py-1.5 rounded-lg bg-navy-800 hover:bg-navy-900 text-white text-xs font-semibold flex items-center space-x-1.5">
+                            <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+                            <span>Center on Liam</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <div id="map"></div>
+                </div>
+
+                <!-- Geofence list -->
+                <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center font-bold text-xs">
+                                <i data-lucide="home" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-emerald-950">Home Safe Zone</p>
+                                <p class="text-xs text-emerald-700">Radius: 150m • Market St</p>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-800">Child Inside</span>
+                    </div>
+
+                    <div class="p-4 rounded-xl border border-blue-200 bg-blue-50/50 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center font-bold text-xs">
+                                <i data-lucide="graduation-cap" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-blue-950">Lincoln Middle School</p>
+                                <p class="text-xs text-blue-700">Radius: 200m • Entry/Exit Alerts Enabled</p>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">Departed</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. TAB: SCREEN TIME -->
+        <section id="content-screentime" class="tab-pane hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-900 mb-1">Screen Time Rules & Schedules</h2>
+                <p class="text-xs text-slate-500 mb-6">Enforce daily allowances, bedtime lockouts, and school study modes remotely</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Daily Limit -->
+                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-bold text-slate-800">Daily Screen Limit</span>
+                            <span class="text-xs px-2 py-0.5 rounded font-bold bg-blue-100 text-blue-800" id="dailyLimitLabel">2h 00m</span>
+                        </div>
+                        <input type="range" min="30" max="360" step="15" value="120" id="dailyLimitSlider" class="w-full accent-blue-600" oninput="updateDailyLimit(this.value)">
+                        <p class="text-xs text-slate-500 mt-2">Maximum allowed screen time per day across all entertainment and game applications.</p>
+                    </div>
+
+                    <!-- Bedtime Schedule -->
+                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-bold text-slate-800">Bedtime Lockout</span>
+                            <span class="text-xs font-bold text-indigo-700">21:00 – 07:00</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-3">Automatically locks device overnight so child gets uninterrupted sleep.</p>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-semibold text-emerald-600">● Active Every Night</span>
+                        </div>
+                    </div>
+
+                    <!-- School Study Mode -->
+                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-bold text-slate-800">School Study Mode</span>
+                            <span class="text-xs font-bold text-emerald-700">08:30 – 15:30</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-3">Blocks games, social apps, and YouTube during school hours (Mon–Fri).</p>
+                        <span class="text-xs font-semibold text-emerald-600">● Enabled</span>
+                    </div>
+                </div>
+
+                <!-- Bonus Time Approval Card -->
+                <div class="mt-6 p-4 rounded-xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold">
+                            +15
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-amber-950">Bonus Time Request Pending</p>
+                            <p class="text-xs text-amber-800">Liam requested +15 min: <em>"Finishing Duolingo French practice"</em></p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="respondBonusTime(true)" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition">Approve +15m</button>
+                        <button onclick="respondBonusTime(false)" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition">Decline</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. TAB: APP MANAGEMENT -->
+        <section id="content-apps" class="tab-pane hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Application Management & Restrictions</h2>
+                        <p class="text-xs text-slate-500">Inventory of installed apps with individual daily quotas and remote blocking</p>
+                    </div>
+                    <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-lg font-medium">6 Apps Tracked</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-500 uppercase text-[11px] font-bold">
+                            <tr>
+                                <th class="p-3">Application</th>
+                                <th class="p-3">Category</th>
+                                <th class="p-3">Usage Today</th>
+                                <th class="p-3">Daily Limit</th>
+                                <th class="p-3 text-right">Access Control</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100" id="appListTable">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. TAB: ONLINE SAFETY -->
+        <section id="content-safety" class="tab-pane hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-900 mb-1">Online Safety & Cyberbullying Guard</h2>
+                <p class="text-xs text-slate-500 mb-6">Heuristic scanning of web domains, suspicious URLs, and harmful notification content</p>
+
+                <div class="space-y-4">
+                    <div class="p-4 rounded-xl border border-amber-200 bg-amber-50 flex items-start justify-between">
+                        <div class="flex items-start space-x-3">
+                            <i data-lucide="shield-x" class="w-6 h-6 text-amber-600 mt-1 flex-shrink-0"></i>
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs px-2 py-0.5 rounded font-bold bg-amber-200 text-amber-800">BLOCKED URL</span>
+                                    <h3 class="text-sm font-bold text-amber-950">Inappropriate Web Domain Blocked</h3>
+                                </div>
+                                <p class="text-xs text-amber-900 mt-1">Domain: <code class="bg-amber-100 px-1 py-0.5 rounded">https://adult-content-sample.com</code></p>
+                                <p class="text-xs text-amber-700 mt-0.5">Blocked automatically in Google Chrome by PARENTIQ Accessibility Service Guard.</p>
+                                <p class="text-[10px] text-amber-500 mt-1">Today at 12:45 PM</p>
+                            </div>
+                        </div>
+                        <button class="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold">Reviewed</button>
+                    </div>
+
+                    <div class="p-4 rounded-xl border border-blue-200 bg-blue-50 flex items-start justify-between">
+                        <div class="flex items-start space-x-3">
+                            <i data-lucide="map-pin" class="w-6 h-6 text-blue-600 mt-1 flex-shrink-0"></i>
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs px-2 py-0.5 rounded font-bold bg-blue-200 text-blue-800">GEOFENCE EXIT</span>
+                                    <h3 class="text-sm font-bold text-blue-950">Lincoln Middle School Safe Zone</h3>
+                                </div>
+                                <p class="text-xs text-blue-800 mt-1">Liam departed the school safe boundary at 15:32.</p>
+                                <p class="text-[10px] text-blue-500 mt-1">Today at 3:32 PM</p>
+                            </div>
+                        </div>
+                        <button class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold">Acknowledge</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. TAB: LIVE MONITORING -->
+        <section id="content-monitoring" class="tab-pane hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2 mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">Disclosed Live Screen Monitoring</h2>
+                        <p class="text-xs text-slate-500">Requires explicit consent and displays a prominent notification on child device</p>
+                    </div>
+                    <button onclick="requestLiveScreenShare()" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-navy-900 font-bold text-xs transition flex items-center space-x-2 shadow">
+                        <i data-lucide="cast" class="w-4 h-4"></i>
+                        <span>Request Screen Mirroring Session</span>
+                    </button>
+                </div>
+
+                <!-- Live Stream Mock Frame -->
+                <div class="w-full max-w-sm mx-auto bg-slate-900 rounded-[32px] p-4 shadow-xl border-4 border-slate-800">
+                    <div class="w-full h-[520px] bg-slate-950 rounded-[24px] flex flex-col items-center justify-center text-slate-400 p-6 text-center border border-slate-800 relative overflow-hidden">
+                        <!-- Top status bar indicator -->
+                        <div class="absolute top-3 left-4 right-4 flex justify-between text-[10px] text-slate-400">
+                            <span>14:25</span>
+                            <span class="flex items-center space-x-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                <span>Live Guard</span>
+                            </span>
+                        </div>
+
+                        <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4 text-cyan-400">
+                            <i data-lucide="screen-share" class="w-8 h-8"></i>
+                        </div>
+                        <p class="font-bold text-white text-sm">MediaProjection Session Ready</p>
+                        <p class="text-xs text-slate-400 mt-2">When started, Liam's device will display: <br/><strong class="text-cyan-300">"Screen Sharing Active — Parent Viewing"</strong> with a stop button.</p>
+
+                        <button onclick="alert('Session invitation sent to Liam\'s device via FCM!')" class="mt-6 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-navy-900 text-xs font-bold transition">
+                            Start Remote Feed
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. TAB: PAIRING -->
+        <section id="content-pairing" class="tab-pane hidden space-y-6">
+            <div class="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                <div class="text-center">
+                    <div class="w-14 h-14 bg-cyan-50 text-cyan-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="qr-code" class="w-8 h-8"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-900">Pair New Child Companion Device</h2>
+                    <p class="text-xs text-slate-500 mt-1">Open PARENTIQ Child on the child's phone and enter the code below.</p>
+                </div>
+
+                <div class="my-8 text-center bg-slate-50 p-6 rounded-2xl border-2 border-dashed border-slate-200">
+                    <span class="text-xs uppercase font-bold tracking-widest text-slate-400 block mb-2">One-Time Pairing Code</span>
+                    <span id="pairingCodeDisplay" class="text-4xl font-black tracking-widest text-navy-900">PQ8K4X</span>
+                    <p class="text-[11px] text-slate-400 mt-3">Valid for 15 minutes • Single-use secure token</p>
+                </div>
+
+                <button onclick="generateNewPairingCode()" class="w-full py-3 rounded-xl bg-navy-900 hover:bg-navy-800 text-white font-bold text-xs transition flex items-center justify-center space-x-2">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    <span>Generate New Code</span>
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        PARENTIQ v1.0.0 • Disclosed Parental Oversight Platform • Verified Backend &amp; DB Connected
+    </footer>
+
+    <!-- Interactive Script with Live REST API & WebSockets -->
+    <script>
+        const API_BASE = '/api/v1';
+        let authToken = null;
+        let currentChildId = null;
+        let currentDeviceId = null;
+        let mapInstance = null;
+        let childMarker = null;
+        let pathPolyline = null;
+        let geofenceCircles = [];
+        let appChartInstance = null;
+        let isLocked = false;
+        let wsConnection = null;
+
+        // Auto-authenticate with demo parent account or existing token
+        async function getAuthToken() {
+            if (authToken) return authToken;
+            const saved = localStorage.getItem('parentiq_token');
+            if (saved) {
+                authToken = saved;
+                return authToken;
+            }
+            try {
+                const res = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'parent@parentiq.com', password: 'Password123!' })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    authToken = data.access_token;
+                    localStorage.setItem('parentiq_token', authToken);
+                    return authToken;
+                }
+            } catch (e) {
+                console.error('Auth login error:', e);
+            }
+            return null;
+        }
+
+        async function apiRequest(endpoint, method = 'GET', body = null) {
+            const token = await getAuthToken();
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const opts = { method, headers };
+            if (body && (method === 'POST' || method === 'PATCH' || method === 'PUT')) {
+                opts.body = JSON.stringify(body);
+            }
+            const res = await fetch(`${API_BASE}${endpoint}`, opts);
+            if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+            return res.json();
+        }
+
+        async function initDashboard() {
+            try {
+                await getAuthToken();
+                const children = await apiRequest('/children');
+                const selector = document.getElementById('childSelector');
+                selector.innerHTML = '';
+
+                children.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = `${c.name} (${c.age || 10} yr)`;
+                    opt.className = 'text-slate-900';
+                    selector.appendChild(opt);
+                });
+
+                if (children.length > 0) {
+                    currentChildId = children[0].id;
+                    selector.value = currentChildId;
+                    selector.onchange = (e) => {
+                        currentChildId = e.target.value;
+                        loadChildData(currentChildId);
+                    };
+                    await loadChildData(currentChildId);
+                }
+            } catch (e) {
+                console.error('Failed to init dashboard:', e);
+            }
+        }
+
+        async function loadChildData(childId) {
+            try {
+                // 1. Dashboard summary
+                const summary = await apiRequest(`/children/${childId}/dashboard`);
+                renderDashboardSummary(summary);
+
+                // 2. Load Screen Time Rules
+                const rules = await apiRequest(`/screentime/rules/${childId}`);
+                renderScreenTimeRules(rules);
+
+                // 3. Load Apps & Usage
+                loadAppsData(childId);
+
+                // 4. Load Location & Geofences
+                loadLocationData(childId);
+
+                // 5. Connect WebSocket
+                connectParentWebSocket(childId);
+
+            } catch (e) {
+                console.error('Error loading child data:', e);
+            }
+        }
+
+        function renderDashboardSummary(data) {
+            document.getElementById('dashBattery').textContent = `${data.battery_level}%`;
+            const hours = Math.floor(data.today_screen_time_seconds / 3600);
+            const mins = Math.floor((data.today_screen_time_seconds % 3600) / 60);
+            const limH = Math.floor(data.daily_limit_minutes / 60);
+            const limM = data.daily_limit_minutes % 60;
+
+            document.getElementById('dashScreenTime').innerHTML = `${hours}h ${mins}m <span class="text-sm font-normal text-slate-500">/ ${limH}h ${limM}m</span>`;
+
+            if (data.current_location && data.current_location.address) {
+                document.getElementById('dashLocation').textContent = data.current_location.address;
+            }
+
+            isLocked = data.instant_lock;
+            updateLockBtnState(isLocked);
+
+            // Render top apps chart
+            renderTopAppsChart(data.top_apps || []);
+        }
+
+        function renderTopAppsChart(topApps) {
+            const ctx = document.getElementById('appUsageChart').getContext('2d');
+            const labels = topApps.length ? topApps.map(a => a.app_name) : ['Roblox', 'YouTube', 'Duolingo', 'WhatsApp', 'Chrome'];
+            const minutes = topApps.length ? topApps.map(a => Math.round(a.foreground_seconds / 60)) : [42, 30, 20, 10, 8];
+
+            if (appChartInstance) appChartInstance.destroy();
+
+            appChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Minutes Used Today',
+                        data: minutes,
+                        backgroundColor: ['#3B82F6', '#EF4444', '#10B981', '#22C55E', '#F59E0B', '#64748B'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function renderScreenTimeRules(rules) {
+            document.getElementById('dailyLimitSlider').value = rules.daily_limit_minutes;
+            updateDailyLimitLabel(rules.daily_limit_minutes);
+        }
+
+        function updateDailyLimitLabel(val) {
+            const hours = Math.floor(val / 60);
+            const mins = val % 60;
+            document.getElementById('dailyLimitLabel').textContent = `${hours}h ${mins.toString().padStart(2, '0')}m`;
+        }
+
+        async function updateDailyLimit(val) {
+            updateDailyLimitLabel(val);
+            if (!currentChildId) return;
+            try {
+                await apiRequest(`/screentime/rules/${currentChildId}`, 'PATCH', {
+                    daily_limit_minutes: parseInt(val)
+                });
+            } catch (e) {
+                console.error('Failed to update daily limit:', e);
+            }
+        }
+
+        async function toggleInstantLock() {
+            if (!currentChildId) return;
+            isLocked = !isLocked;
+            updateLockBtnState(isLocked);
+            try {
+                await apiRequest(`/screentime/rules/${currentChildId}`, 'PATCH', {
+                    instant_lock: isLocked
+                });
+            } catch (e) {
+                console.error('Failed to toggle lock:', e);
+            }
+        }
+
+        function updateLockBtnState(locked) {
+            const btn = document.getElementById('btnInstantLock');
+            const txt = document.getElementById('lockBtnText');
+            if (locked) {
+                btn.className = 'px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow';
+                txt.textContent = 'Unlock Device';
+            } else {
+                btn.className = 'px-3.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow';
+                txt.textContent = 'Instant Lock';
+            }
+        }
+
+        async function loadAppsData(childId) {
+            try {
+                const [installed, restrictions, usages] = await Promise.all([
+                    apiRequest(`/apps/installed/${childId}`),
+                    apiRequest(`/apps/restrictions/${childId}`),
+                    apiRequest(`/apps/usage/${childId}`)
+                ]);
+
+                const tbody = document.getElementById('appListTable');
+                tbody.innerHTML = '';
+
+                installed.forEach(app => {
+                    const rest = restrictions.find(r => r.package_name === app.package_name);
+                    const usage = usages.find(u => u.package_name === app.package_name);
+                    const isBlocked = rest ? rest.is_blocked : false;
+                    const mins = usage ? Math.round(usage.foreground_time_seconds / 60) + 'm' : '0m';
+                    const limitStr = isBlocked ? 'Blocked' : (rest && rest.daily_limit_minutes ? rest.daily_limit_minutes + 'm' : 'None');
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50/80 transition';
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold text-slate-900 flex items-center space-x-2">
+                            <span>${app.app_name}</span>
+                        </td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700">${app.category}</span></td>
+                        <td class="p-3 font-bold text-slate-800">${mins}</td>
+                        <td class="p-3 text-slate-500">${limitStr}</td>
+                        <td class="p-3 text-right">
+                            <button onclick="toggleAppRestriction('${app.package_name}', '${app.app_name}', ${!isBlocked})" class="px-3 py-1 rounded-lg text-xs font-bold transition ${isBlocked ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}">
+                                ${isBlocked ? 'Blocked 🚫' : 'Allowed ✓'}
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                console.error('Failed to load apps:', e);
+            }
+        }
+
+        async function toggleAppRestriction(pkg, name, shouldBlock) {
+            if (!currentChildId) return;
+            try {
+                await apiRequest(`/apps/restrictions/${currentChildId}`, 'POST', {
+                    package_name: pkg,
+                    app_name: name,
+                    is_blocked: shouldBlock
+                });
+                await loadAppsData(currentChildId);
+            } catch (e) {
+                console.error('Failed to set restriction:', e);
+            }
+        }
+
+        async function loadLocationData(childId) {
+            try {
+                const [history, geofences] = await Promise.all([
+                    apiRequest(`/location/history/${childId}`),
+                    apiRequest(`/location/geofences/${childId}`)
+                ]);
+
+                initOrUpdateMap(history, geofences);
+            } catch (e) {
+                console.error('Failed to load location data:', e);
+            }
+        }
+
+        function initOrUpdateMap(history, geofences) {
+            const defaultLat = 37.774929;
+            const defaultLng = -122.419416;
+
+            const latest = history.length ? history[0] : { latitude: defaultLat, longitude: defaultLng };
+
+            if (!mapInstance) {
+                mapInstance = L.map('map').setView([latest.latitude, latest.longitude], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(mapInstance);
+            } else {
+                mapInstance.setView([latest.latitude, latest.longitude], 15);
+            }
+
+            // Remove existing layers
+            if (childMarker) mapInstance.removeLayer(childMarker);
+            if (pathPolyline) mapInstance.removeLayer(pathPolyline);
+            geofenceCircles.forEach(c => mapInstance.removeLayer(c));
+            geofenceCircles = [];
+
+            // Add marker
+            childMarker = L.marker([latest.latitude, latest.longitude]).addTo(mapInstance)
+                .bindPopup(`<b>Child Location</b><br>${latest.address || 'San Francisco, CA'}`)
+                .openPopup();
+
+            // Add polyline
+            if (history.length > 1) {
+                const latlngs = history.map(h => [h.latitude, h.longitude]);
+                pathPolyline = L.polyline(latlngs, { color: '#00ADB5', weight: 4, dashArray: '6, 8' }).addTo(mapInstance);
+            }
+
+            // Add geofences
+            geofences.forEach(gf => {
+                const circle = L.circle([gf.latitude, gf.longitude], {
+                    color: gf.zone_type === 'home' ? '#10B981' : '#3B82F6',
+                    fillColor: gf.zone_type === 'home' ? '#10B981' : '#3B82F6',
+                    fillOpacity: 0.15,
+                    radius: gf.radius_meters
+                }).addTo(mapInstance).bindPopup(`<b>${gf.name}</b><br>Radius: ${gf.radius_meters}m`);
+                geofenceCircles.push(circle);
+            });
+        }
+
+        function centerMapOnChild() {
+            if (mapInstance && childMarker) {
+                mapInstance.setView(childMarker.getLatLng(), 16);
+                childMarker.openPopup();
+            }
+        }
+
+        async function generateNewPairingCode() {
+            if (!currentChildId) return;
+            try {
+                const res = await apiRequest(`/pairing/initiate/${currentChildId}`, 'POST');
+                document.getElementById('pairingCodeDisplay').textContent = res.pairing_code;
+            } catch (e) {
+                console.error('Failed to generate pairing code:', e);
+            }
+        }
+
+        async function respondBonusTime(approve) {
+            if (!currentChildId) return;
+            try {
+                await apiRequest(`/screentime/bonus-action/${currentChildId}`, 'POST', {
+                    approved: approve,
+                    bonus_minutes: 15
+                });
+                alert(approve ? 'Bonus 15 minutes approved!' : 'Bonus request declined.');
+                await loadChildData(currentChildId);
+            } catch (e) {
+                console.error('Bonus action error:', e);
+            }
+        }
+
+        function requestLiveScreenShare() {
+            alert('Live Screen Sharing invitation dispatched to child companion device.');
+        }
+
+        function connectParentWebSocket(childId) {
+            if (wsConnection) {
+                wsConnection.close();
+            }
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/parent/${childId}`;
+            wsConnection = new WebSocket(wsUrl);
+
+            wsConnection.onopen = () => console.log('WebSocket connected to parent stream');
+            wsConnection.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    console.log('WS message received:', msg);
+                    if (msg.event === 'LOCATION_UPDATE' && mapInstance && childMarker) {
+                        childMarker.setLatLng([msg.latitude, msg.longitude]);
+                    }
+                } catch (e) {}
+            };
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('nav button').forEach(el => {
+                el.classList.remove('active-tab');
+                el.classList.add('text-slate-600');
+            });
+
+            document.getElementById('content-' + tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById('tab-' + tabId);
+            activeBtn.classList.add('active-tab');
+            activeBtn.classList.remove('text-slate-600');
+
+            if (tabId === 'location') {
+                setTimeout(() => {
+                    if (mapInstance) mapInstance.invalidateSize();
+                }, 100);
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initDashboard();
+        });
+    </script>
+</body>
+</html>
+</body>
+</html>
+

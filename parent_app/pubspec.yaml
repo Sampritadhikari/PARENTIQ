@@ -1,0 +1,24 @@
+name: parent_app
+description: "PARENTIQ - Next-Generation Child Safety & Parental Control Parent Application"
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  http: ^1.2.2
+  intl: ^0.19.0
+  provider: ^6.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  test: ^1.25.0
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

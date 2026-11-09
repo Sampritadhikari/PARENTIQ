@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">PARENTIQ Child</string>
+    <string name="accessibility_service_label">PARENTIQ Safety &amp; Protection Guard</string>
+    <string name="accessibility_service_description">Used exclusively to protect children from inappropriate web URLs and enforce parental app screen time limits. Never records passwords or keystrokes.</string>
+    <string name="notification_listener_label">PARENTIQ Cyberbullying &amp; Safety Detector</string>
+    <string name="notification_listener_description">Monitors incoming notifications to detect harmful harassment, cyberbullying, or dangerous content to alert guardians.</string>
+    <string name="location_service_channel">Child Location Tracking</string>
+    <string name="media_projection_channel">Active Live Sharing Session</string>
+    <string name="general_channel">PARENTIQ Safety Alerts</string>
+</resources>
+
